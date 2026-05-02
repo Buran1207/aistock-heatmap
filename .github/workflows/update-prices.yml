@@ -46,3 +46,4 @@ jobs:
           git commit -m "chore: update heatmap prices"
           git push
 
+
