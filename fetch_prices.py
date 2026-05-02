@@ -8,7 +8,7 @@ AI 股票热力图行情抓取脚本
 设计目标：
 1) 股票池只维护 universe.json；同一股票可出现在多个赛道，但行情抓取按 市场:代码 自动去重。
 2) 前端展示 H 股统一为 5 位代码（如 00700、09988、02513、00100），抓取时自动转换为 Yahoo Finance 需要的格式（0700.HK、9988.HK、2513.HK、0100.HK）。
-3) 优先使用 Yahoo Finance v7 quote API；价格或涨跌幅不完整时继续回退 chart API、yfinance。
+3) 优先使用 Yahoo Finance v7 quote API；价格或涨跌幅不完整时继续回退 chart/quoteSummary/yfinance，并用最近两个交易日收盘价兜底计算涨跌幅。
 4) 如果单次抓取失败，保留上一轮 prices.json 的有效报价并标记 stale，避免页面大片变灰。
 """
 
@@ -179,6 +179,21 @@ def clean_float(v: Any) -> float | None:
     return f
 
 
+def raw_value(v: Any) -> float | None:
+    """兼容 Yahoo quoteSummary 的 {raw, fmt} 结构。"""
+    if isinstance(v, dict):
+        return clean_float(v.get("raw"))
+    return clean_float(v)
+
+
+def pct_change(price: float | None, prev: float | None) -> float | None:
+    p = clean_float(price)
+    b = clean_float(prev)
+    if p is None or b is None or b == 0:
+        return None
+    return (p - b) / b * 100
+
+
 def is_complete(payload: dict[str, Any] | None) -> bool:
     return bool(payload and clean_float(payload.get("price")) is not None and clean_float(payload.get("change")) is not None)
 
@@ -284,12 +299,19 @@ def fetch_quote_batch(stocks: list[dict[str, Any]], batch_size: int = 70) -> dic
 
 
 def fetch_chart_one(stock: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """
+    Yahoo chart 兜底。
+
+    关键点：部分新上市/新改名港股（如 00100 MiniMax）quote API 可能只有价格、没有涨跌幅。
+    chart meta 也不一定给 previousClose，所以这里拉长到 1mo，并用日线 close 序列估算上一交易日收盘价。
+    如果最后一个日线 close 与 regularMarketTime 同一天，则上一交易日取倒数第二个；否则取最后一个。
+    """
     symbol = stock["yf"]
     key = stock["key"]
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-    params = {"range": "7d", "interval": "1d", "includePrePost": "false"}
+    params = {"range": "1mo", "interval": "1d", "includePrePost": "false", "events": "history"}
     try:
-        r = SESSION.get(url, params=params, timeout=10)
+        r = SESSION.get(url, params=params, timeout=12)
         r.raise_for_status()
         result = r.json().get("chart", {}).get("result", [])
         if not result:
@@ -298,24 +320,103 @@ def fetch_chart_one(stock: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
         meta = node.get("meta", {})
         currency = meta.get("currency") or MARKET_CCY.get(stock["m"], "")
         price = clean_float(meta.get("regularMarketPrice"))
-        prev = clean_float(meta.get("chartPreviousClose") or meta.get("previousClose"))
-        change = (price - prev) / prev * 100 if price is not None and prev else None
-
-        quote = (node.get("indicators", {}).get("quote") or [{}])[0]
-        closes = [clean_float(x) for x in quote.get("close", [])]
-        closes = [x for x in closes if x is not None]
-        timestamps = node.get("timestamp") or []
-        if price is None and closes:
-            price = closes[-1]
-        if change is None and len(closes) >= 2 and closes[-2]:
-            change = (closes[-1] - closes[-2]) / closes[-2] * 100
         regular_time = meta.get("regularMarketTime")
-        if not regular_time and timestamps:
-            regular_time = timestamps[-1]
 
-        return key, price_payload(price, change, currency, symbol=symbol, source="yahoo_chart", regular_time=regular_time)
+        prev = clean_float(meta.get("chartPreviousClose") or meta.get("previousClose"))
+        quote = (node.get("indicators", {}).get("quote") or [{}])[0]
+        raw_closes = quote.get("close", []) or []
+        raw_ts = node.get("timestamp") or []
+        pairs: list[tuple[int | None, float]] = []
+        for i, c0 in enumerate(raw_closes):
+            c = clean_float(c0)
+            if c is None:
+                continue
+            ts = raw_ts[i] if i < len(raw_ts) else None
+            pairs.append((ts, c))
+
+        if price is None and pairs:
+            price = pairs[-1][1]
+
+        # 如果 meta 没有 previousClose，则根据日线判断上一交易日。
+        if prev is None and pairs:
+            reg_date = None
+            try:
+                if regular_time:
+                    reg_date = datetime.fromtimestamp(int(regular_time), tz=timezone.utc).date()
+            except Exception:
+                reg_date = None
+
+            dated: list[tuple[Any, float]] = []
+            for ts, c in pairs:
+                d = None
+                try:
+                    if ts:
+                        d = datetime.fromtimestamp(int(ts), tz=timezone.utc).date()
+                except Exception:
+                    d = None
+                dated.append((d, c))
+
+            if len(dated) >= 2:
+                last_date, last_close = dated[-1]
+                # chart 最后一根如果就是今天/当前交易日，上一交易日用倒数第二根；
+                # 如果 chart 只到昨日，上一交易日用最后一根。
+                if reg_date is not None and last_date == reg_date:
+                    prev = dated[-2][1]
+                else:
+                    prev = last_close
+            elif len(dated) == 1:
+                prev = dated[-1][1]
+
+        change = pct_change(price, prev)
+        if not regular_time and pairs:
+            regular_time = pairs[-1][0]
+
+        return key, price_payload(price, change, currency, symbol=symbol, source="yahoo_chart_1mo", regular_time=regular_time)
     except Exception:
         return key, None
+
+
+def fetch_quote_summary_one(stock: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+    """quoteSummary 兜底，主要补充 previousClose / regularMarketChangePercent。"""
+    symbol = stock["yf"]
+    key = stock["key"]
+    url = f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/{symbol}"
+    params = {"modules": "price,summaryDetail"}
+    try:
+        r = SESSION.get(url, params=params, timeout=12)
+        r.raise_for_status()
+        result = r.json().get("quoteSummary", {}).get("result", [])
+        if not result:
+            return key, None
+        node = result[0]
+        price_node = node.get("price", {})
+        detail = node.get("summaryDetail", {})
+        currency = price_node.get("currency") or MARKET_CCY.get(stock["m"], "")
+        price = raw_value(price_node.get("regularMarketPrice"))
+        change = raw_value(price_node.get("regularMarketChangePercent"))
+        if change is not None:
+            # quoteSummary 里的 percent 有时是 0.0123 代表 1.23%，有时已经是 1.23；做兼容。
+            if abs(change) < 1:
+                change = change * 100
+        if change is None:
+            prev = raw_value(detail.get("previousClose")) or raw_value(price_node.get("regularMarketPreviousClose"))
+            change = pct_change(price, prev)
+        regular_time = raw_value(price_node.get("regularMarketTime"))
+        return key, price_payload(price, change, currency, symbol=symbol, source="yahoo_quote_summary", regular_time=int(regular_time) if regular_time else None)
+    except Exception:
+        return key, None
+
+
+def fetch_quote_summary_incomplete(stocks: list[dict[str, Any]], existing: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    targets = incomplete_stocks(stocks, existing)
+    out: dict[str, dict[str, Any]] = {}
+    if not targets:
+        return out
+    with cf.ThreadPoolExecutor(max_workers=8) as ex:
+        for key, payload in ex.map(fetch_quote_summary_one, targets):
+            if payload:
+                out[key] = payload
+    return out
 
 
 def incomplete_stocks(stocks: list[dict[str, Any]], existing: dict[str, Any]) -> list[dict[str, Any]]:
@@ -342,7 +443,7 @@ def fetch_yfinance_incomplete(stocks: list[dict[str, Any]], existing: dict[str, 
     out: dict[str, dict[str, Any]] = {}
     for stock in targets:
         try:
-            hist = yf.Ticker(stock["yf"]).history(period="7d", auto_adjust=True)
+            hist = yf.Ticker(stock["yf"]).history(period="1mo", auto_adjust=True)
             if hist is None or hist.empty or "Close" not in hist:
                 continue
             close = [clean_float(x) for x in hist["Close"].dropna().tolist()]
@@ -429,6 +530,10 @@ def main() -> int:
     merge_prices(prices, chart_prices)
     print(f"chart fallback: +{len(chart_prices)} attempted fills; complete={sum(1 for v in prices.values() if is_complete(v))}")
 
+    summary_prices = fetch_quote_summary_incomplete(stocks, prices)
+    merge_prices(prices, summary_prices)
+    print(f"quoteSummary fallback: +{len(summary_prices)} attempted fills; complete={sum(1 for v in prices.values() if is_complete(v))}")
+
     yf_prices = fetch_yfinance_incomplete(stocks, prices)
     merge_prices(prices, yf_prices)
     print(f"yfinance fallback: +{len(yf_prices)} attempted fills; complete={sum(1 for v in prices.values() if is_complete(v))}")
@@ -456,8 +561,8 @@ def main() -> int:
     output = {
         "generated_at": now_local_str(),
         "generated_at_utc": now_utc_iso(),
-        "source": "Yahoo Finance quote/chart API with yfinance fallback",
-        "note": "前端每 30 秒轮询本文件；GitHub Actions 定时生成。H 股 key 统一为五位代码；stale=true 表示使用上一轮有效行情。",
+        "source": "Yahoo Finance quote/chart/quoteSummary API with yfinance fallback",
+        "note": "前端每 30 秒轮询本文件；GitHub Actions 定时生成。H 股 key 统一为五位代码；涨跌幅缺失时用最近两个交易日收盘价兜底计算；stale=true 表示使用上一轮有效行情。",
         "total_symbols": len(stocks),
         "loaded_symbols": complete,
         "price_only_symbols": price_only,
