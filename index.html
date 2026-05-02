@@ -200,7 +200,18 @@ const MARKET_NAME={US:'US',H:'H',A:'A'};
 let C=[], P={}, activeMarkets=new Set(MARKET_ORDER), query='', refreshTimer=null;
 
 function qs(id){return document.getElementById(id)}
-function keyOf(s){return `${s.m}:${s.t}`}
+function normTicker(t,m){
+  const raw=String(t).trim();
+  if(m==='US') return raw.toUpperCase();
+  if(m==='H'){
+    let d=raw.replace(/\D/g,'')||raw;
+    if(/^0/.test(d) && d.length>4) d=String(Number(d));
+    return /^\d+$/.test(d)&&d.length<4?d.padStart(4,'0'):d;
+  }
+  if(m==='A') return raw.padStart(6,'0');
+  return raw;
+}
+function keyOf(s){return `${s.m}:${normTicker(s.t,s.m)}`}
 function dataOf(s){return P[keyOf(s)]||null}
 function isNum(v){return typeof v==='number' && Number.isFinite(v)}
 function pct(v){return isNum(v)?`${v>0?'+':''}${v.toFixed(2)}%`:'—'}
@@ -208,7 +219,7 @@ function price(v){return isNum(v)?(Math.abs(v)>=1000?v.toFixed(0):v.toFixed(2)):
 function signClass(v){return !isNum(v)||Math.abs(v)<0.005?'flat':(v>0?'up':'down')}
 function toYfSym(t,m){
   if(m==='US') return t;
-  if(m==='H') return `${String(t).padStart(4,'0')}.HK`;
+  if(m==='H') return `${normTicker(t,m)}.HK`;
   if(String(t).startsWith('6')) return `${t}.SS`;
   if(String(t).startsWith('8')||String(t).startsWith('4')) return `${t}.BJ`;
   return `${t}.SZ`;
