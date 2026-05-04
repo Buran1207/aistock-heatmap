@@ -1,0 +1,17 @@
+{
+  "total_layers": 14,
+  "total_positions": 833,
+  "total_unique": 517,
+  "by_market": {
+    "US": 162,
+    "H": 63,
+    "A": 292
+  },
+  "02F_positions": 92,
+  "02F_unique": 72,
+  "02F_by_market": {
+    "US": 22,
+    "H": 2,
+    "A": 48
+  }
+}

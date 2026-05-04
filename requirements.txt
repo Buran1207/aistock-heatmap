@@ -1,2 +1,4 @@
-requests>=2.32.0
-yfinance>=0.2.40
+pandas
+openpyxl
+yfinance
+requests

@@ -186,7 +186,7 @@ a{color:inherit;text-decoration:none}
     <section class="help" id="help">
       <b>更新机制：</b>GitHub Actions 定时运行 <code>python fetch_prices.py</code>，去重抓取股票池后写入 <code>prices.json</code>；前端每 30 秒轮询该文件，所以 GitHub Pages 不再直接跨域请求行情接口。<br>
       <b>颜色约定：</b>默认红色 = 下跌、绿色 = 上涨；点击顶部 <code>红跌绿涨 / 红涨绿跌</code> 可以切换，选择会自动保存在本机浏览器。灰色 = 暂无任何可用行情；脚本会保留上一轮有效价格，临时抓取失败不会立刻变灰。<br>
-      <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本会按 <code>市场:代码</code> 自动去重。
+      <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本和页面统计都会按 <code>市场:代码</code> 自动去重；芯片仍会在每个相关环节重复展示。
     </section>
 
     <section class="content">
@@ -224,9 +224,7 @@ function toYfSym(t,m){
   if(a.startsWith('8')||a.startsWith('4')) return `${a}.BJ`;
   return `${a}.SZ`;
 }
-const US_EXCHANGE={
-  NVDA:'NASDAQ',AMD:'NASDAQ',INTC:'NASDAQ',AVGO:'NASDAQ',MRVL:'NASDAQ',ARM:'NASDAQ',QCOM:'NASDAQ',ALAB:'NASDAQ',CRDO:'NASDAQ',TSM:'NYSE',UMC:'NYSE',TXN:'NASDAQ',ADI:'NASDAQ',ON:'NASDAQ',STM:'NYSE',ASML:'NASDAQ',AMAT:'NASDAQ',LRCX:'NASDAQ',KLAC:'NASDAQ',TER:'NASDAQ',ACLS:'NASDAQ',AEHR:'NASDAQ',FORM:'NASDAQ',COHU:'NASDAQ',SNPS:'NASDAQ',CDNS:'NASDAQ',ANSS:'NASDAQ',ENTG:'NASDAQ',LIN:'NASDAQ',APD:'NYSE',MU:'NASDAQ',WDC:'NASDAQ',STX:'NASDAQ',NTAP:'NASDAQ',PSTG:'NYSE',DELL:'NYSE',HPE:'NYSE',IBM:'NYSE',ASX:'NYSE',AMKR:'NASDAQ',TTMI:'NASDAQ',APH:'NYSE',TEL:'NYSE',GLW:'NYSE',CLS:'NYSE',JBL:'NYSE',FLEX:'NASDAQ',SANM:'NASDAQ',SMCI:'NASDAQ',HPQ:'NYSE',VRT:'NYSE',ETN:'NYSE',HUBB:'NYSE',ANET:'NYSE',CSCO:'NASDAQ',COHR:'NYSE',LITE:'NASDAQ',IPGP:'NASDAQ',PWR:'NYSE',EME:'NYSE',ABBNY:'OTC',CARR:'NYSE',MOD:'NYSE',TT:'NYSE',JCI:'NYSE',EQIX:'NASDAQ',DLR:'NYSE',IRM:'NYSE',GDS:'NASDAQ',VNET:'NASDAQ',MSFT:'NASDAQ',GOOGL:'NASDAQ',AMZN:'NASDAQ',META:'NASDAQ',ORCL:'NYSE',CRWV:'NASDAQ',NBIS:'NASDAQ',BIDU:'NASDAQ',BABA:'NYSE',JD:'NASDAQ',PDD:'NASDAQ',NTES:'NASDAQ',TME:'NYSE',PLTR:'NASDAQ',NET:'NYSE',AKAM:'NASDAQ',SNOW:'NYSE',DDOG:'NASDAQ',MDB:'NASDAQ',GTLB:'NASDAQ',ADBE:'NASDAQ',CRM:'NYSE',NOW:'NYSE',VEEV:'NYSE',PATH:'NYSE',SOUN:'NASDAQ',ADSK:'NASDAQ',DUOL:'NASDAQ',AAPL:'NASDAQ',TSLA:'NASDAQ',AMBA:'NASDAQ',MVIS:'NASDAQ',INVZ:'NASDAQ',HSAI:'NASDAQ',OUST:'NYSE',AEVA:'NYSE',NXPI:'NASDAQ',MCHP:'NASDAQ',HON:'NASDAQ',ROK:'NYSE',AME:'NYSE',SYM:'NASDAQ',PH:'NYSE',IEX:'NYSE',ITW:'NYSE',DOV:'NYSE',EMR:'NYSE',ITT:'NYSE',FLS:'NYSE',XYL:'NYSE',PTC:'NASDAQ',U:'NYSE',RBLX:'NYSE',HXL:'NYSE',ATI:'NYSE',CRS:'NYSE',MP:'NYSE',QS:'NYSE',ENVX:'NASDAQ',ALB:'NYSE',LAC:'NYSE',MMM:'NYSE',DOW:'NYSE',DD:'NYSE',GEV:'NYSE',GNRC:'NYSE',CMI:'NYSE',NEE:'NYSE',DUK:'NYSE',SO:'NYSE',AEP:'NASDAQ',CEG:'NASDAQ',VST:'NYSE',TLN:'NASDAQ',EXC:'NASDAQ',PEG:'NYSE'
-};
+const US_EXCHANGE={AXTI:'NASDAQ',VECO:'NASDAQ',KEYS:'NYSE',FN:'NYSE',SMTC:'NASDAQ',NVDA:'NASDAQ',AMD:'NASDAQ',INTC:'NASDAQ',AVGO:'NASDAQ',MRVL:'NASDAQ',ARM:'NASDAQ',QCOM:'NASDAQ',ALAB:'NASDAQ',CRDO:'NASDAQ',TSM:'NYSE',UMC:'NYSE',TXN:'NASDAQ',ADI:'NASDAQ',ON:'NASDAQ',STM:'NYSE',ASML:'NASDAQ',AMAT:'NASDAQ',LRCX:'NASDAQ',KLAC:'NASDAQ',TER:'NASDAQ',ACLS:'NASDAQ',AEHR:'NASDAQ',FORM:'NASDAQ',COHU:'NASDAQ',SNPS:'NASDAQ',CDNS:'NASDAQ',ANSS:'NASDAQ',ENTG:'NASDAQ',LIN:'NASDAQ',APD:'NYSE',MU:'NASDAQ',WDC:'NASDAQ',STX:'NASDAQ',NTAP:'NASDAQ',PSTG:'NYSE',DELL:'NYSE',HPE:'NYSE',IBM:'NYSE',ASX:'NYSE',AMKR:'NASDAQ',TTMI:'NASDAQ',APH:'NYSE',TEL:'NYSE',GLW:'NYSE',CLS:'NYSE',JBL:'NYSE',FLEX:'NASDAQ',SANM:'NASDAQ',SMCI:'NASDAQ',HPQ:'NYSE',VRT:'NYSE',ETN:'NYSE',HUBB:'NYSE',ANET:'NYSE',CSCO:'NASDAQ',COHR:'NYSE',LITE:'NASDAQ',IPGP:'NASDAQ',PWR:'NYSE',EME:'NYSE',ABBNY:'OTC',CARR:'NYSE',MOD:'NYSE',TT:'NYSE',JCI:'NYSE',EQIX:'NASDAQ',DLR:'NYSE',IRM:'NYSE',GDS:'NASDAQ',VNET:'NASDAQ',MSFT:'NASDAQ',GOOGL:'NASDAQ',AMZN:'NASDAQ',META:'NASDAQ',ORCL:'NYSE',CRWV:'NASDAQ',NBIS:'NASDAQ',BIDU:'NASDAQ',BABA:'NYSE',JD:'NASDAQ',PDD:'NASDAQ',NTES:'NASDAQ',TME:'NYSE',PLTR:'NASDAQ',NET:'NYSE',AKAM:'NASDAQ',SNOW:'NYSE',DDOG:'NASDAQ',MDB:'NASDAQ',GTLB:'NASDAQ',ADBE:'NASDAQ',CRM:'NYSE',NOW:'NYSE',VEEV:'NYSE',PATH:'NYSE',SOUN:'NASDAQ',ADSK:'NASDAQ',DUOL:'NASDAQ',AAPL:'NASDAQ',TSLA:'NASDAQ',AMBA:'NASDAQ',MVIS:'NASDAQ',INVZ:'NASDAQ',HSAI:'NASDAQ',OUST:'NYSE',AEVA:'NYSE',NXPI:'NASDAQ',MCHP:'NASDAQ',HON:'NASDAQ',ROK:'NYSE',AME:'NYSE',SYM:'NASDAQ',PH:'NYSE',IEX:'NYSE',ITW:'NYSE',DOV:'NYSE',EMR:'NYSE',ITT:'NYSE',FLS:'NYSE',XYL:'NYSE',PTC:'NASDAQ',U:'NYSE',RBLX:'NYSE',HXL:'NYSE',ATI:'NYSE',CRS:'NYSE',MP:'NYSE',QS:'NYSE',ENVX:'NASDAQ',ALB:'NYSE',LAC:'NYSE',MMM:'NYSE',DOW:'NYSE',DD:'NYSE',GEV:'NYSE',GNRC:'NYSE',CMI:'NYSE',NEE:'NYSE',DUK:'NYSE',SO:'NYSE',AEP:'NASDAQ',CEG:'NASDAQ',VST:'NYSE',TLN:'NASDAQ',EXC:'NASDAQ',PEG:'NYSE'};
 function stockUrl(s){
   if(s.tv) return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(s.tv)}`;
   if(s.m==='H') return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent('HKEX:'+String(Number(normTicker(s.t,'H'))))}`;
@@ -274,14 +272,17 @@ function passes(s,cat,lay){
   return hay.includes(query);
 }
 function calcStats(stocks){
+  // 统计口径：按 市场+代码 去重。
+  // 同一家公司可以出现在多个细分环节用于展示，但顶部卡片、层级、细分环节的涨跌数量不重复计算。
+  const uniq=uniqueStocks(stocks);
   let up=0,down=0,flat=0,na=0,sum=0,n=0;
-  stocks.forEach(s=>{
+  uniq.forEach(s=>{
     const d=dataOf(s), ch=d?.change;
     if(!isNum(ch)){na++; return}
     n++; sum+=ch;
     if(ch>0.005) up++; else if(ch<-0.005) down++; else flat++;
   });
-  return {total:stocks.length,up,down,flat,na,valid:n,avg:n?sum/n:null};
+  return {total:uniq.length,up,down,flat,na,valid:n,avg:n?sum/n:null};
 }
 function distHtml(st){
   const total=Math.max(st.total,1);
@@ -366,9 +367,10 @@ function render(){
     const cats=lay.cat.map(c=>catHtml(c,lay)).filter(Boolean);
     if(!cats.length) return;
     const layerStocks=lay.cat.flatMap(c=>c.s.filter(s=>activeMarkets.has(s.m) && (!query || passes(s,c,lay))));
-    const st=calcStats(layerStocks);
+    const layerUnique=uniqueStocks(layerStocks);
+    const st=calcStats(layerUnique);
     const marketBadges=MARKET_ORDER.map(m=>{
-      const c=layerStocks.filter(s=>s.m===m).length;
+      const c=layerUnique.filter(s=>s.m===m).length;
       return c?`<span class="badge">${m} ${c}</span>`:'';
     }).join('');
     html.push(`<section class="layer" id="layer-${i}" style="--lc:${lay.c}">
