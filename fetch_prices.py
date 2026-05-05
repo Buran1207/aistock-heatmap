@@ -29,7 +29,7 @@ except Exception:
 ROOT = Path(__file__).resolve().parent
 UNIVERSE_FILE = ROOT / "universe.json"
 PRICES_FILE = ROOT / "prices.json"
-MARKET_CCY = {"US": "USD", "H": "HKD", "A": "CNY"}
+MARKET_CCY = {"US": "USD", "H": "HKD", "A": "CNY", "TW": "TWD", "JP": "JPY", "KR": "KRW"}
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/125 Safari/537.36"
 SESSION = requests.Session()
 SESSION.headers.update({"User-Agent": UA, "Accept": "application/json,text/plain,*/*"})
@@ -45,7 +45,7 @@ def now_utc_iso() -> str:
 
 def normalize_market(market: str) -> str:
     m = str(market).upper().strip()
-    return "H" if m in {"HK", "HKG"} else m
+    return {"HK": "H", "HKG": "H", "TPE": "TW", "TAIWAN": "TW", "JPN": "JP", "JAPAN": "JP", "KOR": "KR", "KOREA": "KR"}.get(m, m)
 
 
 def normalize_ticker(ticker: str, market: str) -> str:
@@ -57,6 +57,10 @@ def normalize_ticker(ticker: str, market: str) -> str:
         return t.zfill(5)
     if m == "A":
         return t.zfill(6)
+    if m == "KR":
+        return t.zfill(6)
+    if m in {"TW", "JP"}:
+        return t.upper()
     return t
 
 
@@ -65,13 +69,20 @@ def hk_to_yahoo(ticker: str) -> str:
     return f"{n:04d}.HK"
 
 
-def to_yahoo_symbol(ticker: str, market: str) -> str:
+def to_yahoo_symbol(ticker: str, market: str, exchange: str | None = None) -> str:
     m = normalize_market(market)
     t = normalize_ticker(ticker, m)
+    ex = str(exchange or "").upper().strip()
     if m == "US":
         return t
     if m == "H":
         return hk_to_yahoo(t)
+    if m == "TW":
+        return f"{t}.{'TWO' if ex in {'TWO', 'TPEX', 'OTC'} else 'TW'}"
+    if m == "JP":
+        return f"{t}.T"
+    if m == "KR":
+        return f"{t}.{'KQ' if ex in {'KQ', 'KOSDAQ'} else 'KS'}"
     if t.startswith(("6", "9")):
         return f"{t}.SS"
     if t.startswith(("8", "4")):
@@ -79,10 +90,27 @@ def to_yahoo_symbol(ticker: str, market: str) -> str:
     return f"{t}.SZ"
 
 
+def alternate_yahoo_symbols(ticker: str, market: str, primary: str) -> list[str]:
+    m = normalize_market(market)
+    t = normalize_ticker(ticker, m)
+    alts: list[str] = []
+    if m == "TW":
+        alts = [f"{t}.TW", f"{t}.TWO"]
+    elif m == "KR":
+        alts = [f"{t}.KS", f"{t}.KQ"]
+    return [x for x in alts if x != primary]
+
+
 def from_yahoo_symbol(symbol: str) -> tuple[str, str]:
     s = str(symbol).upper()
     if s.endswith(".HK"):
         return "H", s[:-3].zfill(5)
+    if s.endswith((".TW", ".TWO")):
+        return "TW", s.split(".")[0]
+    if s.endswith(".T"):
+        return "JP", s[:-2]
+    if s.endswith((".KS", ".KQ")):
+        return "KR", s.split(".")[0].zfill(6)
     if s.endswith((".SS", ".SZ", ".BJ")):
         return "A", s[:-3].zfill(6)
     return "US", s
@@ -105,7 +133,9 @@ def load_universe() -> list[dict[str, Any]]:
                 t = normalize_ticker(s["t"], m)
                 k = f"{m}:{t}"
                 if k not in uniq:
-                    uniq[k] = {"t": t, "n": s.get("n", t), "m": m, "key": k, "yf": to_yahoo_symbol(t, m)}
+                    ex = s.get("ex") or s.get("exchange")
+                    yf_symbol = s.get("yf") or to_yahoo_symbol(t, m, ex)
+                    uniq[k] = {"t": t, "n": s.get("n", t), "m": m, "key": k, "yf": yf_symbol, "alts": alternate_yahoo_symbols(t, m, yf_symbol)}
     return list(uniq.values())
 
 
@@ -211,25 +241,31 @@ def chart_prev_change(symbol: str, price: float | None = None) -> dict[str, Any]
 
 def fetch_one_fallback(stock: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
     key = stock["key"]
-    symbol = stock["yf"]
-    payload = chart_prev_change(symbol)
-    if payload and payload.get("price") is not None and payload.get("change") is not None:
-        return key, payload
-    if yf is not None:
-        try:
-            tk = yf.Ticker(symbol)
-            hist = tk.history(period="1mo", interval="1d", auto_adjust=False)
-            if hist is not None and len(hist) > 0:
-                closes = [clean_float(x) for x in hist["Close"].tolist()]
-                closes = [x for x in closes if x is not None]
-                if closes:
-                    p = closes[-1]
-                    prev = closes[-2] if len(closes) >= 2 else None
-                    change = (p - prev) / prev * 100 if prev else None
-                    return key, price_payload(p, change, MARKET_CCY.get(stock["m"], ""), symbol=symbol, source="yfinance_history")
-        except Exception:
-            pass
-    return key, payload
+    symbols = [stock["yf"], *stock.get("alts", [])]
+    best: dict[str, Any] | None = None
+    for symbol in symbols:
+        payload = chart_prev_change(symbol)
+        if payload:
+            best = payload
+            if payload.get("price") is not None and payload.get("change") is not None:
+                return key, payload
+        if yf is not None:
+            try:
+                tk = yf.Ticker(symbol)
+                hist = tk.history(period="1mo", interval="1d", auto_adjust=False)
+                if hist is not None and len(hist) > 0:
+                    closes = [clean_float(x) for x in hist["Close"].tolist()]
+                    closes = [x for x in closes if x is not None]
+                    if closes:
+                        p = closes[-1]
+                        prev = closes[-2] if len(closes) >= 2 else None
+                        change = (p - prev) / prev * 100 if prev else None
+                        payload = price_payload(p, change, MARKET_CCY.get(stock["m"], ""), symbol=symbol, source="yfinance_history")
+                        if payload:
+                            return key, payload
+            except Exception:
+                pass
+    return key, best
 
 
 def main() -> int:
@@ -270,7 +306,7 @@ def main() -> int:
         "generated_at": now_local_str(),
         "generated_at_utc": now_utc_iso(),
         "source": "Yahoo Finance quote/chart + yfinance fallback",
-        "note": "盘中或最近交易日行情；H股页面五位代码，Yahoo抓取自动转四位.HK。",
+        "note": "盘中或最近交易日行情；H股页面五位代码；TW/JP/KR 使用 Yahoo 后缀 .TW/.TWO/.T/.KS/.KQ 抓取。",
         "total_symbols": len(stocks),
         "loaded_symbols": sum(1 for v in final.values() if v.get("price") is not None and v.get("change") is not None),
         "missing_symbols": len(failures),

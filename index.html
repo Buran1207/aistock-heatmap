@@ -76,6 +76,9 @@ a{color:inherit;text-decoration:none}
 .mkt-btn[data-market="US"]{color:#60a5fa}
 .mkt-btn[data-market="H"]{color:#a78bfa}
 .mkt-btn[data-market="A"]{color:#f97316}
+.mkt-btn[data-market="TW"]{color:#2dd4bf}
+.mkt-btn[data-market="JP"]{color:#fb7185}
+.mkt-btn[data-market="KR"]{color:#38bdf8}
 .mkt-btn.off{opacity:.34;filter:grayscale(.5)}
 .tool-btn:hover,.mkt-btn:hover{transform:translateY(-1px);box-shadow:var(--glow)}
 .search{width:min(280px,32vw);min-width:160px;border:1px solid var(--line-strong);background:var(--panel);color:var(--text);border-radius:999px;padding:8px 13px;outline:none}
@@ -87,7 +90,7 @@ a{color:inherit;text-decoration:none}
 .live-pill.warn{color:#f59e0b;border-color:rgba(245,158,11,.32);background:rgba(245,158,11,.10)}
 .live-pill.error{color:var(--text-3)}
 .content{padding:22px 24px 64px}
-.overview{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.overview{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
 .stat-card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius-lg);padding:16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
 .stat-card::after{content:"";position:absolute;inset:auto -30% -50% auto;width:180px;height:180px;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 14%,transparent),transparent 62%);pointer-events:none}
 .stat-top{display:flex;justify-content:space-between;gap:12px;align-items:start;color:var(--text-3);font-family:var(--font-mono);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
@@ -132,7 +135,7 @@ a{color:inherit;text-decoration:none}
 .market-row{display:grid;grid-template-columns:58px 1fr;gap:10px;padding:10px 14px;border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
 .market-row:first-child{border-top:0}
 .market-tag{font-family:var(--font-mono);font-weight:950;letter-spacing:.08em;font-size:11px;align-self:start;display:inline-flex;justify-content:center;align-items:center;border-radius:10px;padding:7px 0;background:var(--panel-3);border:1px solid var(--line);color:var(--text-2)}
-.market-tag.US{color:#60a5fa}.market-tag.H{color:#a78bfa}.market-tag.A{color:#f97316}
+.market-tag.US{color:#60a5fa}.market-tag.H{color:#a78bfa}.market-tag.A{color:#f97316}.market-tag.TW{color:#2dd4bf}.market-tag.JP{color:#fb7185}.market-tag.KR{color:#38bdf8}
 .chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
 .chip{display:inline-grid;grid-template-columns:auto auto auto;align-items:center;overflow:hidden;border-radius:10px;border:1px solid var(--heat-bd,var(--chip-fallback-bd));background:var(--heat-bg,var(--chip-fallback));color:var(--heat-fg,var(--chip-fallback-fg));box-shadow:0 1px 0 rgba(255,255,255,.06) inset;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease}
 .chip:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(0,0,0,.20),0 0 0 1px color-mix(in srgb,var(--heat-fg,var(--accent)) 22%,transparent)}
@@ -157,8 +160,8 @@ a{color:inherit;text-decoration:none}
   <aside class="rail">
     <div class="brand">
       <div class="brand-kicker">AI STOCK HEATMAP</div>
-      <h1>AI 产业链<br>三市场热力图</h1>
-      <p>US / H / A 统一股票池，盘中由 <code>prices.json</code> 自动刷新。</p>
+      <h1>AI 产业链<br>六地市场热力图</h1>
+      <p>US / H / A / TW / JP / KR 统一股票池，盘中由 <code>prices.json</code> 自动刷新。</p>
       <div class="rail-status"><i class="pulse" id="rail-pulse"></i><span id="rail-upd">等待行情</span></div>
     </div>
     <div class="rail-edge">↑ Upstream</div>
@@ -172,6 +175,9 @@ a{color:inherit;text-decoration:none}
       <button class="mkt-btn" data-market="US" id="btn-US" onclick="toggleMarket('US')">US</button>
       <button class="mkt-btn" data-market="H" id="btn-H" onclick="toggleMarket('H')">H</button>
       <button class="mkt-btn" data-market="A" id="btn-A" onclick="toggleMarket('A')">A</button>
+      <button class="mkt-btn" data-market="TW" id="btn-TW" onclick="toggleMarket('TW')">TW</button>
+      <button class="mkt-btn" data-market="JP" id="btn-JP" onclick="toggleMarket('JP')">JP</button>
+      <button class="mkt-btn" data-market="KR" id="btn-KR" onclick="toggleMarket('KR')">KR</button>
       <span class="sep"></span>
       <input class="search" id="search" placeholder="搜索 ticker / 公司 / 赛道…" oninput="onSearch()" />
       <button class="tool-btn" onclick="toggleAll(true)">全展开</button>
@@ -186,7 +192,7 @@ a{color:inherit;text-decoration:none}
     <section class="help" id="help">
       <b>更新机制：</b>GitHub Actions 定时运行 <code>python fetch_prices.py</code>，去重抓取股票池后写入 <code>prices.json</code>；前端每 30 秒轮询该文件，所以 GitHub Pages 不再直接跨域请求行情接口。<br>
       <b>颜色约定：</b>默认红色 = 下跌、绿色 = 上涨；点击顶部 <code>红跌绿涨 / 红涨绿跌</code> 可以切换，选择会自动保存在本机浏览器。灰色 = 暂无任何可用行情；脚本会保留上一轮有效价格，临时抓取失败不会立刻变灰。<br>
-      <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本和页面统计都会按 <code>市场:代码</code> 自动去重；芯片仍会在每个相关环节重复展示。
+      <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本和页面统计都会按 <code>市场:代码</code> 自动去重；六地市场代码为 <code>US/H/A/TW/JP/KR</code>。
     </section>
 
     <section class="content">
@@ -203,12 +209,12 @@ a{color:inherit;text-decoration:none}
 </div>
 
 <script>
-const MARKET_ORDER=['US','H','A'];
-const MARKET_NAME={US:'US',H:'H',A:'A'};
+const MARKET_ORDER=['US','H','A','TW','JP','KR'];
+const MARKET_NAME={US:'US',H:'H',A:'A',TW:'TW',JP:'JP',KR:'KR'};
 let C=[], P={}, activeMarkets=new Set(MARKET_ORDER), query='', refreshTimer=null;
 
 function qs(id){return document.getElementById(id)}
-function normTicker(t,m){ if(m==='H') return String(t).padStart(5,'0'); if(m==='A') return String(t).padStart(6,'0'); return String(t).toUpperCase(); }
+function normTicker(t,m){ const mm=String(m).toUpperCase(); if(mm==='H') return String(t).padStart(5,'0'); if(mm==='A'||mm==='KR') return String(t).padStart(6,'0'); return String(t).toUpperCase(); }
 function hkYahoo(t){ const n=parseInt(String(t).replace(/^0+/, '')||'0',10); return String(n).padStart(4,'0')+'.HK'; }
 function keyOf(s){return `${s.m}:${normTicker(s.t,s.m)}`}
 function dataOf(s){return P[keyOf(s)]||null}
@@ -216,9 +222,13 @@ function isNum(v){return typeof v==='number' && Number.isFinite(v)}
 function pct(v){return isNum(v)?`${v>0?'+':''}${v.toFixed(2)}%`:'—'}
 function price(v){return isNum(v)?(Math.abs(v)>=1000?v.toFixed(0):v.toFixed(2)):'—'}
 function signClass(v){return !isNum(v)||Math.abs(v)<0.005?'flat':(v>0?'up':'down')}
-function toYfSym(t,m){
-  if(m==='US') return String(t).toUpperCase();
-  if(m==='H') return hkYahoo(t);
+function toYfSym(t,m,ex){
+  const mm=String(m).toUpperCase();
+  if(mm==='US') return String(t).toUpperCase();
+  if(mm==='H') return hkYahoo(t);
+  if(mm==='TW') return `${String(t).toUpperCase()}.${String(ex||'TW').toUpperCase().includes('TWO')||String(ex||'').toUpperCase().includes('TPEX')?'TWO':'TW'}`;
+  if(mm==='JP') return `${String(t).toUpperCase()}.T`;
+  if(mm==='KR') return `${String(t).padStart(6,'0')}.${String(ex||'KS').toUpperCase().includes('KQ')||String(ex||'').toUpperCase().includes('KOSDAQ')?'KQ':'KS'}`;
   const a=String(t).padStart(6,'0');
   if(a.startsWith('6')||a.startsWith('9')) return `${a}.SS`;
   if(a.startsWith('8')||a.startsWith('4')) return `${a}.BJ`;
@@ -233,6 +243,9 @@ function stockUrl(s){
     const ex=t.startsWith('6')||t.startsWith('9')?'SSE':(t.startsWith('8')||t.startsWith('4')?'BSE':'SZSE');
     return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(ex+':'+t)}`;
   }
+  if(s.m==='TW') { const ex=String(s.ex||'TWSE').toUpperCase(); const tvEx=(ex.includes('TWO')||ex.includes('TPEX'))?'TPEX':'TWSE'; return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvEx+':'+normTicker(s.t,'TW'))}`; }
+  if(s.m==='JP') return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent('TSE:'+normTicker(s.t,'JP'))}`;
+  if(s.m==='KR') return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent('KRX:'+normTicker(s.t,'KR'))}`;
   const ex=US_EXCHANGE[s.t]||'';
   return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(ex?ex+':'+s.t:s.t)}`;
 }
