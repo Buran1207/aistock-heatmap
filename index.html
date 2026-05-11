@@ -153,6 +153,26 @@ a{color:inherit;text-decoration:none}
 .err{color:#fca5a5}
 @media(max-width:1180px){.overview{grid-template-columns:repeat(2,minmax(0,1fr))}.cat-score{min-width:190px}}
 @media(max-width:860px){.rail{display:none}.topbar{padding:10px 12px}.content{padding:14px 12px 46px}.overview{grid-template-columns:1fr}.layer-head{grid-template-columns:auto 1fr auto}.layer-metrics{grid-column:1/-1;justify-content:flex-start}.cat-head{grid-template-columns:1fr}.cat-score{min-width:0;justify-content:flex-start}.market-row{grid-template-columns:44px 1fr}.name{max-width:82px}.search{width:100%;order:8}}
+
+/* ─ Dashboard insights ─ */
+.insights-grid{display:grid;grid-template-columns:minmax(260px,1fr) minmax(260px,1fr) minmax(360px,1.45fr);gap:14px;margin:0 0 18px}
+.insight-panel{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden;min-height:168px}
+.insight-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px 15px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(var(--up-rgb),.08),transparent)}
+.insight-panel.weak .insight-head{background:linear-gradient(90deg,rgba(var(--down-rgb),.08),transparent)}
+.insight-title{font-weight:900;letter-spacing:-.01em;font-size:14px}
+.insight-sub{font-family:var(--font-mono);font-size:10px;color:var(--text-3);font-weight:800;text-transform:uppercase;letter-spacing:.09em}
+.rank-list{display:flex;flex-direction:column;padding:8px}
+.rank-item{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px;border-radius:12px;color:var(--text-2);border:1px solid transparent}
+.rank-item:hover{background:var(--panel-3);border-color:var(--line)}
+.rank-no{width:22px;height:22px;border-radius:8px;display:grid;place-items:center;font-family:var(--font-mono);font-size:10px;font-weight:900;background:var(--panel-3);color:var(--text-3)}
+.rank-main{min-width:0}.rank-name{font-size:12px;font-weight:850;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rank-meta{font-size:11px;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rank-score{text-align:right;font-family:var(--font-mono);font-weight:950}.rank-score.up{color:var(--up)}.rank-score.down{color:var(--down)}
+.breadth-mini{height:5px;background:var(--panel-3);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:5px;display:flex}.breadth-mini i{display:block}.breadth-mini .bu{background:var(--up)}.breadth-mini .bd{background:var(--down)}.breadth-mini .bf{background:var(--flat)}
+.matrix-wrap{padding:10px 12px 12px;overflow:auto}.matrix{width:100%;border-collapse:separate;border-spacing:0 6px;font-size:11px}.matrix th{font-family:var(--font-mono);font-size:9px;color:var(--text-3);text-align:right;padding:0 6px 3px}.matrix th:first-child{text-align:left}.matrix td{padding:6px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--panel-2);white-space:nowrap}.matrix td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px;color:var(--text);font-weight:800;max-width:210px;overflow:hidden;text-overflow:ellipsis}.matrix td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}.mcell{font-family:var(--font-mono);text-align:right;color:var(--text-3)}.mcell.up{color:var(--up);background:rgba(var(--up-rgb),.10)}.mcell.down{color:var(--down);background:rgba(var(--down-rgb),.10)}.mcell.empty{opacity:.38}
+.strong-note{font-size:11px;color:var(--text-3);padding:0 15px 12px;line-height:1.5}.chip.extreme{position:relative;box-shadow:0 0 0 1px var(--heat-fg),0 6px 18px rgba(0,0,0,.28)}.chip.extreme::after{content:"";position:absolute;inset:1px;border-radius:inherit;border:1px solid color-mix(in srgb,var(--heat-fg) 72%,transparent);pointer-events:none}.chip.surge .change::before{content:"▲ ";font-size:8px}.chip.plunge .change::before{content:"▼ ";font-size:8px}
+.layer.hot .layer-head{box-shadow:inset 0 0 0 999px rgba(var(--up-rgb),.035)}.layer.cold .layer-head{box-shadow:inset 0 0 0 999px rgba(var(--down-rgb),.035)}.cat.hot{border-color:rgba(var(--up-rgb),.34)}.cat.cold{border-color:rgba(var(--down-rgb),.34)}
+.breadth-label{font-family:var(--font-mono);font-size:10px;color:var(--text-3);font-weight:900;margin-left:6px}
+@media(max-width:1180px){.insights-grid{grid-template-columns:1fr}.matrix td:first-child{max-width:none}}
+
 </style>
 </head>
 <body>
@@ -192,11 +212,12 @@ a{color:inherit;text-decoration:none}
     <section class="help" id="help">
       <b>更新机制：</b>GitHub Actions 定时运行 <code>python fetch_prices.py</code>，去重抓取股票池后写入 <code>prices.json</code>；前端每 30 秒轮询该文件，所以 GitHub Pages 不再直接跨域请求行情接口。<br>
       <b>颜色约定：</b>默认红色 = 下跌、绿色 = 上涨；点击顶部 <code>红跌绿涨 / 红涨绿跌</code> 可以切换，选择会自动保存在本机浏览器。灰色 = 暂无任何可用行情；脚本会保留上一轮有效价格，临时抓取失败不会立刻变灰。<br>
-      <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本和页面统计都会按 <code>市场:代码</code> 自动去重；六地市场代码为 <code>US/H/A/TW/JP/KR</code>。
+      <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本和页面统计都会按 <code>市场:代码</code> 自动去重；六地市场代码为 <code>US/H/A/TW/JP/KR</code>。顶部新增“最强/最弱细分赛道”和“市场联动矩阵”，按现有行情自动计算。
     </section>
 
     <section class="content">
       <div class="overview" id="overview"></div>
+      <div class="insights-grid" id="insights"></div>
       <div class="legend">
         <span><i class="lg-up"></i>上涨 / 涨幅越大越深</span>
         <span><i class="lg-down"></i>下跌 / 跌幅越大越深</span>
@@ -320,8 +341,11 @@ function sortedStocks(arr){
 
 function chip(s){
   const d=dataOf(s), ch=d?.change, has=isNum(ch);
-  const cls=['chip',has?'':'no-data',d?.stale?'stale':''].filter(Boolean).join(' ');
-  const title=`${s.n} ${s.m}:${s.t}\n价格：${price(d?.price)} ${d?.currency||''}\n涨跌：${pct(ch)}${d?.stale?'\n使用上一轮有效行情':''}`;
+  const extreme=has && Math.abs(ch)>=5;
+  const cls=['chip',has?'':'no-data',d?.stale?'stale':'',extreme?'extreme':'',has&&ch>=5?'surge':'',has&&ch<=-5?'plunge':''].filter(Boolean).join(' ');
+  const extraExtreme=extreme?'\n异动：单日绝对涨跌幅 ≥ 5%':'';
+  const extraStale=d?.stale?'\n使用上一轮有效行情':'';
+  const title=`${s.n} ${s.m}:${s.t}\n价格：${price(d?.price)} ${d?.currency||''}\n涨跌：${pct(ch)}${extraExtreme}${extraStale}`;
   return `<a class="${cls}" style="${heatVars(ch)}" href="${stockUrl(s)}" target="_blank" rel="noopener" title="${title}">
     <span class="chip-main"><b class="ticker">${s.t}</b><span class="name">${s.n}</span></span>
     <span class="price">${price(d?.price)}</span>
@@ -362,10 +386,11 @@ function catHtml(cat,lay){
   }).join('');
   if(!rows) return '';
   const st=calcStats(cat.s.filter(s=>activeMarkets.has(s.m) && (!query || passes(s,cat,lay))));
-  return `<section class="cat">
+  const catTone=isNum(st.avg)&&st.avg>=3?'hot':(isNum(st.avg)&&st.avg<=-3?'cold':'');
+  return `<section class="cat ${catTone}">
     <header class="cat-head">
       <div class="cat-title"><i class="cat-dot"></i><span class="cat-name">${cat.n}</span></div>
-      <div class="cat-score">${avgBadge(st)}<span class="badge up">涨 ${st.up}</span><span class="badge down">跌 ${st.down}</span><span class="badge">无 ${st.na}</span></div>
+      <div class="cat-score">${avgBadge(st)}<span class="breadth-label">${breadthText(st)}</span><span class="badge up">涨 ${st.up}</span><span class="badge down">跌 ${st.down}</span><span class="badge">无 ${st.na}</span></div>
       <div style="grid-column:1/-1">${distHtml(st)}</div>
     </header>
     ${rows}
@@ -374,6 +399,7 @@ function catHtml(cat,lay){
 
 function render(){
   buildOverview();
+  buildInsights();
   const wrap=qs('wrap');
   const html=[];
   C.forEach((lay,i)=>{
@@ -386,10 +412,11 @@ function render(){
       const c=layerUnique.filter(s=>s.m===m).length;
       return c?`<span class="badge">${m} ${c}</span>`:'';
     }).join('');
-    html.push(`<section class="layer" id="layer-${i}" style="--lc:${lay.c}">
+    const layerTone=isNum(st.avg)&&st.avg>=3?'hot':(isNum(st.avg)&&st.avg<=-3?'cold':'');
+    html.push(`<section class="layer ${layerTone}" id="layer-${i}" style="--lc:${lay.c}">
       <header class="layer-head" onclick="toggleLayer(${i})">
         <span class="layer-num">${lay.num}</span>
-        <div class="layer-title"><h2>${lay.l}</h2><p>${lay.sub||'AI supply-chain segment'} · ${st.valid}/${st.total} 有行情 · 均值 ${pct(st.avg)}</p></div>
+        <div class="layer-title"><h2>${lay.l}</h2><p>${lay.sub||'AI supply-chain segment'} · ${st.valid}/${st.total} 有行情 · 均值 ${pct(st.avg)} · ${breadthText(st)}</p></div>
         <div class="layer-metrics">${marketBadges}<span class="badge up">涨 ${st.up}</span><span class="badge down">跌 ${st.down}</span></div>
         <span class="chev">▾</span>
       </header>
