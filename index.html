@@ -339,6 +339,68 @@ function sortedStocks(arr){
   });
 }
 
+
+
+function breadthText(st){
+  const denom=st.valid||0;
+  if(!denom) return '广度 —';
+  const ratio=st.up/denom*100;
+  return `广度 ${ratio.toFixed(0)}%`;
+}
+function breadthMini(st){
+  const denom=Math.max(st.valid||0,1);
+  const wu=Math.max(0,st.up/denom*100).toFixed(2)+'%';
+  const wd=Math.max(0,st.down/denom*100).toFixed(2)+'%';
+  const wf=Math.max(0,st.flat/denom*100).toFixed(2)+'%';
+  return `<div class="breadth-mini" title="涨 ${st.up} / 跌 ${st.down} / 平 ${st.flat}"><i class="bu" style="width:${wu}"></i><i class="bf" style="width:${wf}"></i><i class="bd" style="width:${wd}"></i></div>`;
+}
+function categorySnapshots(){
+  const arr=[];
+  C.forEach(lay=>{
+    (lay.cat||[]).forEach(cat=>{
+      const stocks=cat.s.filter(s=>activeMarkets.has(s.m) && (!query || passes(s,cat,lay)));
+      const st=calcStats(stocks);
+      if(!stocks.length) return;
+      const leaders=sortedStocks(uniqueStocks(stocks)).filter(s=>isNum(dataOf(s)?.change)).slice(0,2).map(s=>`${s.n} ${pct(dataOf(s)?.change)}`).join('，');
+      arr.push({layer:lay.l,cat:cat.n,stocks,st,leaders});
+    });
+  });
+  return arr;
+}
+function rankPanel(title,sub,items,weak=false){
+  const body=items.length?items.map((x,i)=>`<div class="rank-item">
+      <span class="rank-no">${i+1}</span>
+      <div class="rank-main"><div class="rank-name" title="${x.cat}">${x.cat}</div><div class="rank-meta">${x.layer} · ${x.st.valid}/${x.st.total} 有行情 · ${breadthText(x.st)}${x.leaders?' · '+x.leaders:''}</div>${breadthMini(x.st)}</div>
+      <div class="rank-score ${signClass(x.st.avg)}">${pct(x.st.avg)}</div>
+    </div>`).join(''):`<div class="empty" style="margin:10px">等待行情更新后生成排行。</div>`;
+  return `<section class="insight-panel ${weak?'weak':''}"><header class="insight-head"><div><div class="insight-title">${title}</div><div class="insight-sub">${sub}</div></div></header><div class="rank-list">${body}</div></section>`;
+}
+function marketMatrix(items){
+  const rows=items.slice(0,8).map(x=>{
+    const cells=MARKET_ORDER.map(m=>{
+      const st=calcStats(x.stocks.filter(s=>s.m===m));
+      const cls=!st.valid?'empty':signClass(st.avg);
+      return `<td class="mcell ${cls}" title="${m}：${st.valid}/${st.total} 有行情，涨 ${st.up} / 跌 ${st.down}">${st.valid?pct(st.avg):'—'}</td>`;
+    }).join('');
+    return `<tr><td title="${x.cat}">${x.cat}</td>${cells}</tr>`;
+  }).join('');
+  const head=MARKET_ORDER.map(m=>`<th>${m}</th>`).join('');
+  return `<section class="insight-panel"><header class="insight-head"><div><div class="insight-title">市场联动矩阵</div><div class="insight-sub">同一赛道六地强弱</div></div></header><div class="matrix-wrap"><table class="matrix"><thead><tr><th>赛道</th>${head}</tr></thead><tbody>${rows||'<tr><td colspan="7">等待行情更新后生成矩阵。</td></tr>'}</tbody></table></div><div class="strong-note">按细分赛道均值排序，单元格显示该赛道在对应市场的去重平均涨跌幅。</div></section>`;
+}
+function buildInsights(){
+  const host=qs('insights');
+  if(!host) return;
+  const cats=categorySnapshots().filter(x=>x.st.valid>0);
+  const strong=[...cats].sort((a,b)=>(b.st.avg??-999)-(a.st.avg??-999)).slice(0,6);
+  const weak=[...cats].sort((a,b)=>(a.st.avg??999)-(b.st.avg??999)).slice(0,6);
+  const matrixBase=[...cats].sort((a,b)=>Math.abs(b.st.avg||0)-Math.abs(a.st.avg||0)).slice(0,8);
+  host.innerHTML=[
+    rankPanel('今日最强细分赛道','Top sectors by avg change',strong,false),
+    rankPanel('今日最弱细分赛道','Weakest sectors by avg change',weak,true),
+    marketMatrix(matrixBase)
+  ].join('');
+}
+
 function chip(s){
   const d=dataOf(s), ch=d?.change, has=isNum(ch);
   const extreme=has && Math.abs(ch)>=5;
