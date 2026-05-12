@@ -1,0 +1,64 @@
+name: Update AI stock heatmap prices
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每 5 分钟运行一次，但避开每小时 00 分的 GitHub Actions 高峰。
+    # GitHub cron 使用 UTC；调度是 best-effort，可能延迟或被丢弃。
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  queue: max
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Fetch latest prices
+        run: |
+          echo "Run started at UTC: $(date -u '+%Y-%m-%d %H:%M:%S')"
+          python fetch_prices.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = json.loads(Path('prices.json').read_text(encoding='utf-8'))
+          print('generated_at:', p.get('generated_at'))
+          print('generated_at_utc:', p.get('generated_at_utc'))
+          print('total:', p.get('total_symbols'), 'loaded:', p.get('loaded_symbols'), 'missing:', p.get('missing_symbols'), 'partial:', p.get('price_only_symbols'))
+          print('failures:', p.get('failures', [])[:20])
+          print('partial_symbols:', p.get('partial_symbols', [])[:20])
+          PY
+
+      - name: Commit updated prices.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          if git diff --quiet -- prices.json; then
+            echo "prices.json unchanged"
+            exit 0
+          fi
+          git add prices.json
+          git commit -m "chore: update prices.json"
+          git push
