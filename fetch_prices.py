@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AI 股票热力图行情抓取脚本
-读取 universe.json，按 市场:代码 去重，输出 prices.json。
+读取 universe.json，按 市场:代码 去重，输出 prices.json、prices_manifest.json，并生成版本化 prices_archive/prices_*.json。
 
 要点：
 - H 股在 universe.json / 页面统一五位展示；抓 Yahoo 时自动转成四位 .HK，例如 00100 -> 0100.HK、02513 -> 2513.HK。
@@ -29,6 +29,9 @@ except Exception:
 ROOT = Path(__file__).resolve().parent
 UNIVERSE_FILE = ROOT / "universe.json"
 PRICES_FILE = ROOT / "prices.json"
+MANIFEST_FILE = ROOT / "prices_manifest.json"
+ARCHIVE_DIR = ROOT / "prices_archive"
+MAX_ARCHIVE_FILES = 45
 MARKET_CCY = {"US": "USD", "H": "HKD", "A": "CNY", "TW": "TWD", "JP": "JPY", "KR": "KRW"}
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/125 Safari/537.36"
 SESSION = requests.Session()
@@ -41,6 +44,37 @@ def now_local_str() -> str:
 
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def batch_from_env() -> str:
+    raw = str(__import__("os").environ.get("PRICE_BATCH", "")).strip().upper()
+    if raw in {"ASIA_CLOSE", "US_CLOSE", "MANUAL", "MANUAL_RUN"}:
+        return "MANUAL" if raw == "MANUAL_RUN" else raw
+    # Fallback for local/manual runs. Around 08:25 UTC is Asia close; around 22:20 UTC is US close.
+    h = datetime.now(timezone.utc).hour
+    return "ASIA_CLOSE" if 6 <= h < 14 else "US_CLOSE"
+
+
+def batch_label(batch: str) -> str:
+    return {
+        "ASIA_CLOSE": "亚洲收盘",
+        "US_CLOSE": "美股收盘",
+        "MANUAL": "手动更新",
+        "INITIAL": "初始占位",
+    }.get(batch, batch)
+
+
+def safe_batch_slug(batch: str) -> str:
+    return str(batch).lower().replace("/", "_").replace(" ", "_")
+
+
+def prune_archive() -> None:
+    try:
+        files = sorted(ARCHIVE_DIR.glob("prices_*.json"), key=lambda p: p.name)
+        for p in files[:-MAX_ARCHIVE_FILES]:
+            p.unlink(missing_ok=True)
+    except Exception as exc:
+        print(f"archive prune skipped: {exc}", file=sys.stderr)
 
 
 def normalize_market(market: str) -> str:
@@ -302,11 +336,16 @@ def main() -> int:
                 partial.append(key)
             final[key] = {**p, "currency": p.get("currency") or MARKET_CCY.get(s["m"], ""), "symbol": p.get("symbol") or s["yf"]}
 
+    batch = batch_from_env()
+    generated_at = now_local_str()
+    generated_at_utc = now_utc_iso()
     payload = {
-        "generated_at": now_local_str(),
-        "generated_at_utc": now_utc_iso(),
+        "generated_at": generated_at,
+        "generated_at_utc": generated_at_utc,
+        "batch": batch,
+        "batch_label": batch_label(batch),
         "source": "Yahoo Finance quote/chart + yfinance fallback",
-        "note": "盘中或最近交易日行情；H股页面五位代码；TW/JP/KR 使用 Yahoo 后缀 .TW/.TWO/.T/.KS/.KQ 抓取。",
+        "note": "收盘批次行情：亚洲收盘与美股收盘各更新一次；H股页面五位代码；TW/JP/KR 使用 Yahoo 后缀 .TW/.TWO/.T/.KS/.KQ 抓取。",
         "total_symbols": len(stocks),
         "loaded_symbols": sum(1 for v in final.values() if v.get("price") is not None and v.get("change") is not None),
         "missing_symbols": len(failures),
@@ -315,8 +354,35 @@ def main() -> int:
         "partial_symbols": partial,
         "prices": dict(sorted(final.items())),
     }
+
+    ARCHIVE_DIR.mkdir(exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    archive_rel = f"prices_archive/prices_{stamp}_{safe_batch_slug(batch)}.json"
+    archive_file = ROOT / archive_rel
+    payload["archive_file"] = archive_rel
+
     PRICES_FILE.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {PRICES_FILE}: total={len(stocks)} loaded={payload['loaded_symbols']} missing={len(failures)} partial={len(partial)}")
+    archive_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    manifest = {
+        "generated_at": generated_at,
+        "generated_at_utc": generated_at_utc,
+        "batch": batch,
+        "batch_label": batch_label(batch),
+        "current_file": archive_rel,
+        "fallback_file": "prices.json",
+        "total_symbols": payload["total_symbols"],
+        "loaded_symbols": payload["loaded_symbols"],
+        "missing_symbols": payload["missing_symbols"],
+        "price_only_symbols": payload["price_only_symbols"],
+        "failures_count": len(failures),
+        "partial_count": len(partial),
+        "source": payload["source"],
+    }
+    MANIFEST_FILE.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    prune_archive()
+
+    print(f"wrote {PRICES_FILE} and {archive_file}: batch={batch} total={len(stocks)} loaded={payload['loaded_symbols']} missing={len(failures)} partial={len(partial)}")
     if failures:
         print("failures:", ", ".join(failures[:30]), file=sys.stderr)
     if partial:

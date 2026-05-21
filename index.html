@@ -181,7 +181,7 @@ a{color:inherit;text-decoration:none}
     <div class="brand">
       <div class="brand-kicker">AI STOCK HEATMAP</div>
       <h1>AI 产业链<br>六地市场热力图</h1>
-      <p>US / H / A / TW / JP / KR 统一股票池，盘中由 <code>prices.json</code> 自动刷新。</p>
+      <p>US / H / A / TW / JP / KR 统一股票池，亚洲收盘与美股收盘分批更新。</p>
       <div class="rail-status"><i class="pulse" id="rail-pulse"></i><span id="rail-upd">等待行情</span></div>
     </div>
     <div class="rail-edge">↑ Upstream</div>
@@ -210,7 +210,7 @@ a{color:inherit;text-decoration:none}
     </div>
 
     <section class="help" id="help">
-      <b>更新机制：</b>GitHub Actions 定时运行 <code>python fetch_prices.py</code>，去重抓取股票池后写入 <code>prices.json</code>；前端每 30 秒轮询该文件，所以 GitHub Pages 不再直接跨域请求行情接口。<br>
+      <b>更新机制：</b>GitHub Actions 每天在亚洲收盘后、美股收盘后各运行一次 <code>python fetch_prices.py</code>，写入 <code>prices.json</code>、<code>prices_manifest.json</code> 和版本化 <code>prices_archive/prices_*.json</code>；前端优先读取 manifest 指向的新文件，降低 GitHub Pages 同名 JSON 缓存影响。<br>
       <b>颜色约定：</b>默认红色 = 下跌、绿色 = 上涨；点击顶部 <code>红跌绿涨 / 红涨绿跌</code> 可以切换，选择会自动保存在本机浏览器。灰色 = 暂无任何可用行情；脚本会保留上一轮有效价格，临时抓取失败不会立刻变灰。<br>
       <b>股票池：</b>只维护 <code>universe.json</code>，同一股票可以出现在多个细分环节，但抓取脚本和页面统计都会按 <code>市场:代码</code> 自动去重；六地市场代码为 <code>US/H/A/TW/JP/KR</code>。顶部新增“最强/最弱细分赛道”和“市场联动矩阵”，按现有行情自动计算。
     </section>
@@ -532,10 +532,41 @@ function observeRail(){
   document.querySelectorAll('.layer').forEach(el=>io.observe(el));
 }
 
-function setStatus(kind,text){
+function batchLabel(batch){
+  return {ASIA_CLOSE:'亚洲收盘',US_CLOSE:'美股收盘',MANUAL:'手动更新',INITIAL:'初始占位'}[batch] || batch || '收盘批次';
+}
+function ageText(ms){
+  if(!Number.isFinite(ms) || ms<0) return '时间未知';
+  const mins=Math.floor(ms/60000);
+  if(mins<60) return `${mins} 分钟前`;
+  const hrs=Math.floor(mins/60);
+  if(hrs<48) return `${hrs} 小时前`;
+  return `${Math.floor(hrs/24)} 天前`;
+}
+function statusFromPayload(j,valid){
+  const iso=j.generated_at_utc || j._manifest?.generated_at_utc;
+  const ts=iso?Date.parse(iso):NaN;
+  const age=Number.isFinite(ts)?Date.now()-ts:NaN;
+  const hours=Number.isFinite(age)?age/3600000:999;
+  // 双收盘批次：30小时内正常；周末/假日兼容到72小时，超过则提示过期。
+  const kind=!valid?'warn':(hours<=30?'live':(hours<=72?'warn':'error'));
+  const label=!valid?'待更新':(hours<=30?'正常':(hours<=72?'延迟':'过期'));
+  const parts=[
+    `${batchLabel(j.batch || j._manifest?.batch)}已更新`,
+    j.generated_at || j._manifest?.generated_at || '时间未知',
+    `${valid} quotes`,
+    `距今 ${ageText(age)}`
+  ];
+  const fail=(j.failures||[]).length ?? j._manifest?.failures_count;
+  const partial=(j.partial_symbols||[]).length ?? j._manifest?.partial_count;
+  if(Number.isFinite(fail)) parts.push(`未抓到 ${fail}`);
+  if(Number.isFinite(partial)) parts.push(`部分 ${partial}`);
+  return {kind,label,text:parts.join(' · '),short:`${label} · ${batchLabel(j.batch || j._manifest?.batch)} · ${ageText(age)}`};
+}
+function setStatus(kind,text,label){
   const pill=qs('live-pill'), pulse=qs('rail-pulse');
   pill.className=`live-pill ${kind}`;
-  pill.textContent=kind==='live'?'LIVE':kind==='warn'?'STALE':'WAIT';
+  pill.textContent=label || (kind==='live'?'正常':kind==='warn'?'延迟':'等待');
   pulse.className=`pulse ${kind==='live'?'live':''}`;
   qs('updated-at').textContent=text;
   qs('rail-upd').textContent=text;
@@ -546,18 +577,31 @@ async function loadUniverse(){
   const u=await r.json();
   C=u.layers||u;
 }
+async function fetchJsonNoStore(url){
+  const sep=url.includes('?')?'&':'?';
+  const r=await fetch(`${url}${sep}ts=${Date.now()}`,{cache:'no-store'});
+  if(!r.ok) throw new Error(`${url} ${r.status}`);
+  return await r.json();
+}
 async function loadPrices(){
   try{
-    const r=await fetch(`prices.json?ts=${Date.now()}`,{cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
-    const j=await r.json();
+    let manifest=null, j=null;
+    try{
+      manifest=await fetchJsonNoStore('prices_manifest.json');
+      const file=manifest.current_file || manifest.fallback_file || 'prices.json';
+      j=await fetchJsonNoStore(`${file}?v=${encodeURIComponent(manifest.generated_at_utc||manifest.generated_at||Date.now())}`);
+      j._manifest=manifest;
+    }catch(manifestError){
+      console.warn('manifest load failed, fallback to prices.json',manifestError);
+      j=await fetchJsonNoStore('prices.json');
+    }
     P=j.prices||{};
     const valid=Object.values(P).filter(x=>isNum(x?.price)&&isNum(x?.change)).length;
-    const txt=`${j.generated_at||'已加载'} · ${valid} quotes`;
-    setStatus(valid?'live':'warn',txt);
+    const st=statusFromPayload(j,valid);
+    setStatus(st.kind,st.text,st.label);
     render();
   }catch(e){
-    setStatus('error','行情文件未就绪');
+    setStatus('error','行情文件未就绪','错误');
     console.warn('prices load failed',e);
   }
 }
@@ -571,7 +615,7 @@ async function init(){
     buildRail();
     render();
     await loadPrices();
-    refreshTimer=setInterval(loadPrices,30000);
+    refreshTimer=setInterval(loadPrices,300000);
   }catch(e){
     qs('wrap').innerHTML=`<div class="empty err">初始化失败：${e.message}</div>`;
     setStatus('error','初始化失败');
