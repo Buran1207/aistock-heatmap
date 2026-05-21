@@ -1,0 +1,16 @@
+﻿source_name,file_name,raw_rows,normalized_rows,status
+上市申请一览,港股IPO上市申请.csv,2707,2705,已接入
+首发信息一览,港股IPO首发信息一览.csv,232,230,已接入
+IPO打新中签结果,港股IPO打新中签结果.csv,237,235,已接入
+基石投资者,港股IPO基石投资者.csv,1305,1303,已接入
+孖展数据,港股IPO孖展数据.csv,239,237,已接入
+IPO暗盘行情,港股IPO暗盘行情.csv,233,230,已接入
+承销团参与度,港股IPO承销团参与度-明细.xlsx.csv,123,121,已接入
+账簿管理人,港股IPO账簿管理人-明细.xlsx.csv,114,112,已接入
+IPO回拨统计,,0,0,未接入
+首发中介机构/承销团,,0,0,未接入
+上市后0-180D行情,ipo_daily_quotes_180d.csv,23576,23576,已接入
+上市后路径标签,ipo_post_listing_paths.csv,234,234,已接入
+投资决策评分,ipo_investment_decision_scored.csv,2668,2668,已接入
+A1公司维度观察池,a1_project_watchlist_company_level.csv,1098,1098,已接入
+A1申请历史记录,a1_application_history.csv,1713,1713,已接入

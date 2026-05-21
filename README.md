@@ -1,27 +1,61 @@
-# AI Stock Heatmap
+# v10 iFind主数据链路与未上市评分修复版
 
-US / H / A 三市场 AI 产业链热力图。
+本版重点修复：未上市/A1评分过粗、B研究池过多、缺资料被误作为扣分、二级页面仍优先显示旧 Yahoo 行情、日期显示为 1970-01-01 等问题。
 
-## 本版重构重点
+# 港股 IPO / 二级交易投资决策系统 v9
 
-- 股票池只维护 `universe.json`。同一股票可以出现在多个细分环节，`fetch_prices.py` 会按 `市场:代码` 自动去重。
-- 市场统一为 `US / H / A`，不再使用 `HK`。
-- 细分环节按业务实质重排：
-  - 基础大模型只保留自研通用/多模态模型或 MaaS 平台；
-  - 金山办公、微盟等移入应用层；
-  - ASML/AMAT/华大九天从 GPU/NPU 移入晶圆制造/设备/EDA/IP；
-  - WDC/STX 从服务器整机移入存储/HBM/CXL；
-  - 光模块、网络设备、散热液冷、IDC、云服务拆开。
-- 个股点击打开 TradingView 图表页。浏览器已登录 TradingView 时，会直接使用用户自己的 TradingView 账户。
+本版是「一级/二级决策重构与精细评分版」。
 
-## 手动运行行情更新
+## 本版重点
 
-GitHub 仓库页面 → Actions → `Update AI stock heatmap prices` → `Run workflow`。
+- A1 与招股期合并为「一级市场 / IPO项目决策」工作区；A1与招股期仍保留两套评分。
+- 已上市公司统一进入「已上市 / 二级交易决策」，当前二级评分不混入历史IPO评分。
+- 二级评分拆为 0-30D、31-180D、180D+ 三套规则，页面内可调权重。
+- 技术指标新增 KDJ、BOLL、OBV、MFI、ATR，并转化为交易状态、买入触发和卖出触发。
+- 解禁不再单独评分，只作为二级交易风险扣分；正式评分只用 iFind 精确解禁。
+- 修复 THSData 解析，技术信号优先使用 iFind 行情和快照。
+- 日期字段显示到日，人工研究评分嵌入一级市场界面。
 
-若看不到 workflow，请确认文件路径是：
+## 本地运行
 
-```text
-.github/workflows/update-prices.yml
+先检查环境：
+
+```bat
+00_setup_env.bat
 ```
 
-并确认 Settings → Actions → General → Workflow permissions 为 `Read and write permissions`。
+模拟运行，不消耗额度：
+
+```bat
+run_daily_update_dry_run.bat
+```
+
+收盘后真实更新：
+
+```bat
+run_daily_update_low_quota.bat
+```
+
+## iFind 接口
+
+默认 bat 已加入：
+
+```bat
+C:\iFinD\THSDataInterface_Windows\bin\x64
+```
+
+账号密码只放本地：
+
+```text
+config/local_ifind_credentials.ini
+```
+
+不要上传 GitHub。
+
+## 详细说明
+
+见：
+
+```text
+docs/v9_primary_secondary_scoring_rebuild.md
+```

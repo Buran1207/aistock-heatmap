@@ -1,0 +1,17 @@
+﻿source,status,rows,new_rows,message,updated_at
+listing_applications,dry_run,0,0.0,将调用THS_DR，窗口20240101至20260515；不写缓存,2026-05-14 19:14:01
+ipo_master,dry_run,0,0.0,将调用THS_DR，窗口20240101至20260515；不写缓存,2026-05-14 19:14:01
+ballot_results,dry_run,0,0.0,将调用THS_DR，窗口20251116至20260515；不写缓存,2026-05-14 19:14:01
+margin_data,dry_run,0,0.0,将调用THS_DR，窗口20251116至20260515；不写缓存,2026-05-14 19:14:01
+cornerstones,dry_run,0,0.0,将调用THS_DR，窗口20251116至20260515；不写缓存,2026-05-14 19:14:01
+lockup_events,dry_run,0,0.0,将调用THS_DR，窗口20251116至20271106；不写缓存,2026-05-14 19:14:01
+underwriters,dry_run,0,0.0,将调用THS_DR，窗口20251116至20260515；不写缓存,2026-05-14 19:14:01
+bookrunners,dry_run,0,0.0,将调用THS_DR，窗口20251116至20260515；不写缓存,2026-05-14 19:14:01
+market_index_quotes,dry_run,0,0.0,将更新固定指数，2026-05-10至2026-05-15,2026-05-14 19:14:01
+company_profile,dry_run,0,0.0,将按2024+ IPO股票池分批拉取242只；batch=80,2026-05-14 19:14:01
+financial_summary,dry_run,0,0.0,将按2024+ IPO股票池分批拉取242只；batch=80,2026-05-14 19:14:01
+valuation_metrics,skipped,0,,未找到API命令，保留空接口,2026-05-14 19:14:01
+shareholders,dry_run,0,0.0,将按2024+ IPO股票池分批拉取242只；batch=80,2026-05-14 19:14:01
+southbound_holding,dry_run,0,0.0,将按2024+ IPO股票池分批拉取242只；batch=80,2026-05-14 19:14:01
+daily_quotes,dry_run,0,0.0,将拉取242只，2026-05-10至2026-05-15,2026-05-14 19:14:01
+close_snapshot,dry_run,0,0.0,将拉取242只收盘快照,2026-05-14 19:14:01

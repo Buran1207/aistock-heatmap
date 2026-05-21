@@ -1,0 +1,125 @@
+{
+  "balanced": {
+    "zh_name": "平衡型",
+    "en_name": "Balanced",
+    "zh_desc": "兼顾一级参与、基石安全和上市后二级交易确认。",
+    "en_desc": "Balances primary participation, cornerstone safety and post-listing confirmation.",
+    "weights": {
+      "定价安全": 20,
+      "需求热度": 20,
+      "基石质量": 15,
+      "投行质量": 10,
+      "暗盘/首日": 15,
+      "上市后路径": 15,
+      "解禁风险": 5
+    }
+  },
+  "primary_ipo": {
+    "zh_name": "打新收益型",
+    "en_name": "IPO Return",
+    "zh_desc": "更重视认购热度、中签效率、孖展和首日表现。",
+    "en_desc": "Emphasizes demand heat, allocation efficiency, margin demand and first-day performance.",
+    "weights": {
+      "定价安全": 15,
+      "需求热度": 30,
+      "基石质量": 10,
+      "投行质量": 10,
+      "暗盘/首日": 20,
+      "上市后路径": 10,
+      "解禁风险": 5
+    }
+  },
+  "cornerstone": {
+    "zh_name": "基石/锚定型",
+    "en_name": "Cornerstone / Anchor",
+    "zh_desc": "更重视估值安全、基石质量、投行质量和解禁压力。",
+    "en_desc": "Emphasizes valuation safety, cornerstone quality, syndicate quality and lock-up risk.",
+    "weights": {
+      "定价安全": 25,
+      "需求热度": 10,
+      "基石质量": 25,
+      "投行质量": 15,
+      "暗盘/首日": 5,
+      "上市后路径": 10,
+      "解禁风险": 10
+    }
+  },
+  "secondary_trade": {
+    "zh_name": "二级交易型",
+    "en_name": "Secondary Trading",
+    "zh_desc": "更重视暗盘、首日确认、上市后路径和深V/趋势信号。",
+    "en_desc": "Emphasizes gray market, first-day confirmation, post-listing path and deep-V/trend signals.",
+    "weights": {
+      "定价安全": 10,
+      "需求热度": 10,
+      "基石质量": 5,
+      "投行质量": 5,
+      "暗盘/首日": 25,
+      "上市后路径": 35,
+      "解禁风险": 10
+    }
+  },
+  "risk_control": {
+    "zh_name": "风险控制型",
+    "en_name": "Risk Control",
+    "zh_desc": "更重视破发、解禁、回撤、流动性和估值安全边际。",
+    "en_desc": "Emphasizes break issue price risk, lock-up pressure, drawdown, liquidity and valuation margin of safety.",
+    "weights": {
+      "定价安全": 25,
+      "需求热度": 10,
+      "基石质量": 15,
+      "投行质量": 10,
+      "暗盘/首日": 10,
+      "上市后路径": 15,
+      "解禁风险": 15
+    }
+  },
+  "_a1_default_weights": {
+    "zh_name": "A1默认项目参与预判分",
+    "en_name": "A1 Default Early IPO Participation Bias",
+    "zh_desc": "A1阶段不使用发行价/认购/行情等未来数据；用于提前建档、研究和额度准备。",
+    "en_desc": "A1 excludes future deal/quote data; used for early research and quota preparation.",
+    "weights": {
+      "industry": 25,
+      "company": 25,
+      "peer": 15,
+      "sponsor": 10,
+      "tradability": 10,
+      "market": 10,
+      "manual_adjustment": "±10"
+    }
+  },
+  "_secondary_stage_weights": {
+    "zh_name": "二级三阶段默认权重",
+    "en_name": "Default Secondary Stage Weights",
+    "weights": {
+      "0-30D": {
+        "IPO锚点": 30,
+        "短线技术": 10,
+        "量价承接": 20,
+        "首日/首周路径": 20,
+        "相对强弱": 10,
+        "流动性": 10,
+        "风险扣分": "最高-25"
+      },
+      "31-180D": {
+        "技术趋势": 25,
+        "量价确认": 20,
+        "IPO锚点": 20,
+        "路径质量": 10,
+        "相对强弱": 10,
+        "流动性": 10,
+        "风险扣分": "最高-25"
+      },
+      "180D+": {
+        "中期趋势": 30,
+        "量价确认": 20,
+        "相对强弱": 15,
+        "长期修复/趋势延续": 15,
+        "资金承接/流动性": 10,
+        "波动回撤": 10,
+        "风险扣分": "最高-25"
+      }
+    }
+  }
+}

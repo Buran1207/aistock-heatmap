@@ -1,0 +1,134 @@
+{
+  "update_time": "16:30",
+  "ipo_start_date": "2024-01-01",
+  "default_static_lookback_days": 180,
+  "default_quote_backfill_days": 5,
+  "lockup_past_days": 180,
+  "lockup_future_days": 540,
+  "max_retry": 1,
+  "batch_size_quotes": 120,
+  "batch_size_snapshot": 200,
+  "cache_dir": "data/raw_ifind",
+  "export_dir": "ifind_exports",
+  "deploy_dir": "deploy_data",
+  "log_dir": "logs",
+  "sources": {
+    "listing_applications": {
+      "section": "1 上市申请一览",
+      "frequency": "daily",
+      "cache_policy": "replace"
+    },
+    "application_history": {
+      "section": "申请明细",
+      "frequency": "on_demand",
+      "cache_policy": "append_by_company"
+    },
+    "ipo_master": {
+      "section": "2 首发信息一览",
+      "frequency": "daily",
+      "cache_policy": "merge_incremental"
+    },
+    "ballot_results": {
+      "section": "3 打新中签结果",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_incremental"
+    },
+    "margin_data": {
+      "section": "4 孖展数据",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_incremental"
+    },
+    "cornerstones": {
+      "section": "5 基石投资者",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_incremental"
+    },
+    "gray_market": {
+      "section": "6 暗盘行情",
+      "frequency": "when_available",
+      "cache_policy": "merge_incremental"
+    },
+    "daily_quotes": {
+      "section": "7 港股日行情",
+      "frequency": "daily_incremental",
+      "cache_policy": "append_by_code_date"
+    },
+    "close_snapshot": {
+      "section": "8 港股收盘行情快照",
+      "frequency": "daily",
+      "cache_policy": "replace_daily"
+    },
+    "lockup_events": {
+      "section": "9 限售股解禁明细",
+      "frequency": "daily_window",
+      "cache_policy": "replace_window"
+    },
+    "underwriters": {
+      "section": "10 承销团",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_incremental"
+    },
+    "bookrunners": {
+      "section": "11 账簿管理人",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_incremental"
+    },
+    "market_index_quotes": {
+      "section": "12 港股指数行情",
+      "frequency": "daily_incremental",
+      "cache_policy": "append_by_code_date",
+      "uses_stock_pool": false
+    },
+    "company_profile": {
+      "section": "13 行业分类/概念标签",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_by_code",
+      "uses_stock_pool": true,
+      "function": "THS_BD"
+    },
+    "financial_summary": {
+      "section": "14 财务摘要",
+      "frequency": "weekly_or_daily_recent",
+      "cache_policy": "merge_by_code",
+      "uses_stock_pool": true,
+      "function": "THS_BD"
+    },
+    "valuation_metrics": {
+      "section": "15 估值指标",
+      "frequency": "when_available",
+      "cache_policy": "merge_by_code",
+      "uses_stock_pool": true,
+      "function": "THS_BD"
+    },
+    "shareholders": {
+      "section": "16 股权结构/主要股东",
+      "frequency": "daily_recent",
+      "cache_policy": "merge_by_code",
+      "uses_stock_pool": true,
+      "function": "THS_BD"
+    },
+    "southbound_holding": {
+      "section": "17 南向持股",
+      "frequency": "daily",
+      "cache_policy": "append_by_code_date",
+      "uses_stock_pool": true,
+      "function": "THS_BD"
+    },
+    "announcements": {
+      "section": "18 公告目录/事件日历",
+      "frequency": "when_available",
+      "cache_policy": "merge_incremental"
+    },
+    "earnings_calendar": {
+      "section": "19 业绩日历",
+      "frequency": "when_available",
+      "cache_policy": "merge_incremental"
+    }
+  },
+  "batch_size_bd": 80,
+  "batch_size_index": 10,
+  "bd_refresh_days": 30,
+  "unified_stock_pool_mode": "ipo_2024_plus",
+  "quote_mode": "ipo_pool_batches",
+  "snapshot_mode": "ipo_pool_batches"
+}
