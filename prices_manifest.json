@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-10-01 15:32:31",
-  "generated_at_utc": "2026-10-01T15:32:31+00:00",
+  "generated_at": "2026-10-02 01:42:48",
+  "generated_at_utc": "2026-10-02T01:42:48+00:00",
   "batch": "US_CLOSE",
   "batch_label": "美股收盘",
-  "current_file": "prices_archive/prices_20261001_153231_us_close.json",
+  "current_file": "prices_archive/prices_20261002_014248_us_close.json",
   "fallback_file": "prices.json",
   "total_symbols": 652,
   "loaded_symbols": 651,
