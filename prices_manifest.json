@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-11-24 06:07:18",
-  "generated_at_utc": "2026-11-24T06:07:18+00:00",
-  "batch": "ASIA_CLOSE",
-  "batch_label": "亚洲收盘",
-  "current_file": "prices_archive/prices_20261124_060718_asia_close.json",
+  "generated_at": "2026-11-24 19:35:47",
+  "generated_at_utc": "2026-11-24T19:35:47+00:00",
+  "batch": "US_CLOSE",
+  "batch_label": "美股收盘",
+  "current_file": "prices_archive/prices_20261124_193547_us_close.json",
   "fallback_file": "prices.json",
   "total_symbols": 652,
-  "loaded_symbols": 651,
+  "loaded_symbols": 652,
   "missing_symbols": 0,
-  "price_only_symbols": 1,
+  "price_only_symbols": 0,
   "failures_count": 0,
-  "partial_count": 1,
+  "partial_count": 0,
   "source": "Yahoo Finance quote/chart + yfinance fallback"
 }
